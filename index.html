@@ -239,6 +239,10 @@ button,input,select{font:inherit}
 .monthGrid input,.monthGrid select{
   width:100%;min-width:66px;border:1px solid var(--line);border-radius:9px;padding:6px 8px;text-align:right
 }
+.monthGrid .yearEdit{
+  min-width:58px;width:66px;text-align:center;font-weight:900;
+  border-color:#b9d4c2;background:#f4faf6;color:var(--green)
+}
 .monthGrid .readonly{background:#f8fbf9;font-weight:900}
 .monthGrid .rollCell{background:#eef8f2;color:var(--green);font-weight:900}
 .summaryLine{
@@ -341,7 +345,7 @@ button,input,select{font:inherit}
           <div class="badgeRow" id="badges"></div>
         </div>
         <div class="helper">
-          Click the play button to expand a main account. Inside it, you'll see the root account plus all linked rollover accounts, and you can continue the chain by setting the latest branch to <b>Reinvest</b>.
+          Click the play button to expand a main account. The <b>first contribution year is editable</b>; changing it automatically shifts the next four years, maturity date, and family ages. Linked rollover years remain automatic so the reinvestment chain stays intact.
         </div>
 
         <div class="accountsTable">
@@ -460,6 +464,22 @@ function setRootAction(id,val){
 function setRootYear(id,rowIdx,monthIdx,val){
   const r=state.roots.find(x=>x.id===id);
   r.years[rowIdx].m[monthIdx]=Math.max(0,Number(val)||0);
+  renderAll(false);
+}
+function setRootStartYear(id,val){
+  const r=state.roots.find(x=>x.id===id);
+  if(!r) return;
+  const newYear=Math.round(Number(val)||0);
+  if(newYear<1900 || newYear>2200){
+    alert("Please enter a valid start year.");
+    renderAll(false);
+    return;
+  }
+  r.startYear=newYear;
+  r.years=normalizeYearArray(r.years||[],newYear);
+  // A changed main-account start year changes its maturity timeline,
+  // so future rollover branches are rebuilt from this updated journey.
+  r._branches={};
   renderAll(false);
 }
 function setRootRate(id,rowIdx,val){
@@ -763,8 +783,11 @@ function renderAccounts(){
         const rateChange = idx===0
           ? `setRootRate('${root.id}',${rowIdx},this.value)`
           : `setBranchRate('${root.id}',${idx},${rowIdx},this.value)`;
+        const yearCell = (idx===0 && rowIdx===0)
+          ? `<input class="yearEdit" type="number" value="${r.year}" onchange="setRootStartYear('${root.id}',this.value)" title="Edit the first year; the next four years will update automatically">`
+          : `${r.year}`;
         return `<tr>
-          <td>${r.year}</td>
+          <td>${yearCell}</td>
           ${monthCells}
           <td class="readonly">${P(r.total)}</td>
           <td><input type="number" step="0.01" value="${row.rate}" onchange="${rateChange}"></td>
