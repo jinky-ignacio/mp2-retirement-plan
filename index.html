@@ -371,6 +371,12 @@ button,input,select{font:inherit}
   display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;
   background:#eaf4ff;color:#365d82;border:1px solid #cfe0f1;font-size:10px;font-weight:900
 }
+
+.linkedSeedCell{
+  min-width:88px;margin-bottom:5px;padding:5px 7px;border-radius:8px;
+  background:#eaf4ff;border:1px solid #cbdff2;color:#315b82;
+  font-size:10px;font-weight:900;text-align:center;white-space:nowrap
+}
 </style>
 </head>
 <body>
@@ -618,16 +624,21 @@ function normalizeRoot(root){
   root.years=normalizeYearArray(root.years||[], root.startYear);
   if(!root._branches) root._branches={};
 }
-function calcSegment(years){
+function calcSegment(years, linkedSeed=0, seedMonth=4){
   let opening=0,totalManual=0,totalDiv=0,rows=[];
-  years.forEach((row)=>{
+  years.forEach((row,idx)=>{
     const manual=row.m.reduce((s,v)=>s+Number(v||0),0);
-    const total=manual;
+    const all=[...row.m];
+    const rollover=(idx===0?Number(linkedSeed||0):0);
+    if(rollover>0){
+      all[Math.max(0,Math.min(11,Number(seedMonth||0)))] += rollover;
+    }
+    const total=all.reduce((s,v)=>s+Number(v||0),0);
     let weighted=0;
-    row.m.forEach((v,mi)=> weighted += Number(v||0)*(12-mi));
+    all.forEach((v,mi)=> weighted += Number(v||0)*(12-mi));
     const div=opening*(Number(row.rate||0)/100) + (weighted/12)*(Number(row.rate||0)/100);
     const end=opening + total + div;
-    rows.push({year:row.year,manual,total,div,end,rate:row.rate,opening});
+    rows.push({year:row.year,manual,total,rollover,div,end,rate:row.rate,opening});
     opening=end; totalManual+=manual; totalDiv+=div;
   });
   return {
@@ -643,37 +654,34 @@ function ensureBranchRecord(root, idx, startYear, seed){
   const newSeed=Number(seed||0);
 
   if(!root._branches[idx]){
-    const years = normalizeYearArray(
-      Array.from({length:5},(_,i)=>makeYear(startYear+i,[])),
-      startYear
-    );
-    years[0].m[seedMonth]=newSeed;
     root._branches[idx]={
       action:"harvest",
       startYear,
       seedBase:newSeed,
       seedMonth,
-      years
+      seedSeparated:true,
+      years:normalizeYearArray(Array.from({length:5},(_,i)=>makeYear(startYear+i,[])),startYear)
     };
   } else {
     const branch=root._branches[idx];
     branch.startYear=startYear;
-    branch.years=normalizeYearArray(branch.years||[], startYear);
+    branch.years=normalizeYearArray(branch.years||[],startYear);
 
-    const oldSeed=Number(branch.seedBase||0);
-    const oldSeedMonth=(branch.seedMonth!=null) ? Number(branch.seedMonth) : seedMonth;
-    const oldCellValue=Number(branch.years[0].m[oldSeedMonth]||0);
-    const manualAdjustment=oldCellValue-oldSeed;
-
-    if(oldSeedMonth!==seedMonth){
-      branch.years[0].m[oldSeedMonth]=0;
+    // Migration from older builds where the linked seed was physically stored
+    // inside the maturity-month contribution cell. Strip it out once so that
+    // monthly fields remain manual top-ups only.
+    if(!branch.seedSeparated){
+      const oldMonth=(branch.seedMonth!=null)?Number(branch.seedMonth):seedMonth;
+      const oldSeed=Number(branch.seedBase||0);
+      const oldCell=Number(branch.years[0].m[oldMonth]||0);
+      branch.years[0].m[oldMonth]=Math.max(0,oldCell-oldSeed);
+      branch.seedSeparated=true;
     }
 
-    branch.years[0].m[seedMonth]=newSeed+manualAdjustment;
+    // The live-linked portion is ALWAYS exactly the latest previous maturity.
     branch.seedBase=newSeed;
     branch.seedMonth=seedMonth;
   }
-
   return root._branches[idx];
 }
 function buildJourney(root){
@@ -684,9 +692,11 @@ function buildJourney(root){
   let action=root.action || "harvest";
   let matMonth=Number(root.maturityMonth||5);
   let idx=0;
+  let linkedSeed=0;
+  let linkedSeedMonth=Math.max(0,Math.min(11,matMonth-1));
 
   while(true){
-    const calc=calcSegment(years);
+    const calc=calcSegment(years,linkedSeed,linkedSeedMonth);
     segs.push({
       idx,
       title:idx===0?root.name:(root.name+" → Rollover "+idx),
@@ -696,7 +706,9 @@ function buildJourney(root){
       maturityMonth:matMonth,
       action,
       calc,
-      years
+      years,
+      linkedSeed,
+      linkedSeedMonth
     });
 
     if(action!=="reinvest" || idx>10) break;
@@ -706,6 +718,8 @@ function buildJourney(root){
     years=branch.years;
     startYear=branch.startYear;
     action=branch.action || "harvest";
+    linkedSeed=branch.seedBase; // exact previous maturity, live-linked
+    linkedSeedMonth=branch.seedMonth;
     idx=nextIdx;
   }
   return segs;
@@ -731,7 +745,7 @@ function setBranchAction(rootId, idx, value){
     const currentJourney=buildJourney(root);
     const seg=currentJourney.find(s=>s.idx===idx);
     if(!seg) return;
-    const branch=ensureBranchRecord(root, idx, seg.startYear, seg.calc.maturity);
+    const branch=ensureBranchRecord(root, idx, seg.startYear, seg.linkedSeed);
     branch.action=value;
     if(value==="harvest"){
       Object.keys(root._branches).forEach(k=>{ if(Number(k)>idx) delete root._branches[k]; });
@@ -744,7 +758,8 @@ function setBranchYear(rootId, idx, rowIdx, monthIdx, val){
   normalizeRoot(root);
   const currentJourney=buildJourney(root);
   const seg=currentJourney.find(s=>s.idx===idx); if(!seg) return;
-  const branch=ensureBranchRecord(root, idx, seg.startYear, seg.calc.maturity);
+  const branch=ensureBranchRecord(root,idx,seg.startYear,seg.linkedSeed);
+  // This is MANUAL TOP-UP only. The linked seed lives separately.
   branch.years[rowIdx].m[monthIdx]=Math.max(0,Number(val)||0);
   renderAll(false);
 }
@@ -753,7 +768,7 @@ function setBranchRate(rootId, idx, rowIdx, val){
   normalizeRoot(root);
   const currentJourney=buildJourney(root);
   const seg=currentJourney.find(s=>s.idx===idx); if(!seg) return;
-  const branch=ensureBranchRecord(root, idx, seg.startYear, seg.calc.maturity);
+  const branch=ensureBranchRecord(root, idx, seg.startYear, seg.linkedSeed);
   branch.years[rowIdx].rate=Math.max(0,Number(val)||0);
   renderAll(false);
 }
@@ -914,7 +929,9 @@ function renderAccounts(){
           const onch = idx===0
             ? `setRootYear('${root.id}',${rowIdx},${mi},this.value)`
             : `setBranchYear('${root.id}',${idx},${rowIdx},${mi},this.value)`;
-          return `<td><input type="number" min="0" value="${val}" onchange="${onch}"></td>`;
+          const liveSeed = (idx>0 && rowIdx===0 && mi===seg.linkedSeedMonth && seg.linkedSeed>0)
+            ? `<div class="linkedSeedCell">🔗 ${P(seg.linkedSeed)}</div>` : "";
+          return `<td>${liveSeed}<input type="number" min="0" value="${val}" placeholder="+ top-up" onchange="${onch}"></td>`;
         }).join("");
         const rateChange = idx===0
           ? `setRootRate('${root.id}',${rowIdx},this.value)`
@@ -935,7 +952,7 @@ function renderAccounts(){
       const summaryLine = `
         <div class="summaryLine">
           <span>Contributions: <b>${P(seg.calc.totalContrib)}</b></span>
-          ${idx>0?`<span>Live linked rollover: <b>${P(branchMeta?.seedBase||0)}</b></span>`:''}
+          ${idx>0?`<span>Exact live-linked seed: <b>${P(seg.linkedSeed||0)}</b></span>`:''}
           <span>Estimated dividends: <b>${P(seg.calc.totalDiv)}</b></span>
           <span>Maturity value: <b>${P(seg.calc.maturity)}</b></span>
         </div>
@@ -983,7 +1000,7 @@ function renderAccounts(){
         </div>
         <div class="branchBody">
           ${summaryLine}
-          ${idx>0?`<div class="helper" style="margin:0 0 10px 0">This rollover is <b>live-linked</b> to the previous account's maturity. If you change earlier monthly contributions or dividend rates, the linked maturity portion updates automatically. Any manual top-up or adjustment you add here is preserved on top of the refreshed rollover amount.</div>`:''}
+          ${idx>0?`<div class="helper" style="margin:0 0 10px 0">The blue 🔗 amount is the <b>exact live-linked maturity value from the previous account</b> and updates automatically whenever that previous account changes. The monthly boxes below are separate <b>manual top-ups only</b>, so you can add more without breaking the link.</div>`:''}
           <div class="monthGrid">
             <table>
               <thead><tr><th>Year</th>${months.map(m=>`<th>${m}</th>`).join("")}<th>Total</th><th>Dividend %</th><th>Est. Dividend</th><th>Year-end Value</th></tr></thead>
@@ -1189,7 +1206,7 @@ function renderAll(syncFields=true){
   renderSummary();
   renderAccounts();
 }
-const STORAGE_KEY="mp2_journey_public_safe_v1";
+const STORAGE_KEY="mp2_journey_exact_live_link_v1";
 
 function saveData(showMessage=true){
   try{
@@ -1204,7 +1221,7 @@ function saveData(showMessage=true){
 }
 function loadData(showMessage=true){
   try{
-    const raw=localStorage.getItem(STORAGE_KEY);
+    const raw=localStorage.getItem(STORAGE_KEY) || localStorage.getItem("mp2_journey_public_safe_v1");
     if(!raw){
       if(showMessage) alert("No saved data found yet on this browser.");
       return false;
