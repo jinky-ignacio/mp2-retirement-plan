@@ -1097,17 +1097,103 @@ function renderAll(syncFields=true){
   renderSummary();
   renderAccounts();
 }
-function saveData(){
-  localStorage.setItem("mp2_journey_public_safe_v1", JSON.stringify(state));
-  alert("Saved on this browser/device.");
+const STORAGE_KEY="mp2_journey_public_safe_v1";
+
+function saveData(showMessage=true){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if(showMessage) alert("Saved on this browser/device.");
+    return true;
+  }catch(err){
+    console.error("Save failed:",err);
+    if(showMessage) alert("Unable to save data in this browser.");
+    return false;
+  }
 }
-function loadData(){
-  const raw=localStorage.getItem("mp2_journey_public_safe_v1") || localStorage.getItem("mp2_journey_public_safe_v1");
-  if(!raw){ alert("No saved data found yet on this browser."); return; }
-  state=JSON.parse(raw);
+function loadData(showMessage=true){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw){
+      if(showMessage) alert("No saved data found yet on this browser.");
+      return false;
+    }
+    const saved=JSON.parse(raw);
+    if(saved && typeof saved==="object"){
+      state=saved;
+      if(!state.settings){
+        state.settings={momBirth:0,dadBirth:0,kidBirth:0,retAge:60,monthlyGoal:0,inflation:3.5,defaultMatMonth:5};
+      }
+      if(!Array.isArray(state.roots)) state.roots=clone(demoRoots);
+      if(!state.summaryFilter) state.summaryFilter="overall";
+      renderAll();
+      return true;
+    }
+  }catch(err){
+    console.error("Load failed:",err);
+    if(showMessage) alert("Saved data could not be loaded.");
+  }
+  return false;
+}
+function autosave(){
+  saveData(false);
+}
+
+/* Wrap all common data-changing actions with auto-save */
+const _setRootYear=setRootYear;
+setRootYear=function(id,rowIdx,monthIdx,val){
+  _setRootYear(id,rowIdx,monthIdx,val);
+  autosave();
+};
+const _setRootRate=setRootRate;
+setRootRate=function(id,rowIdx,val){
+  _setRootRate(id,rowIdx,val);
+  autosave();
+};
+const _setRootStartYear=setRootStartYear;
+setRootStartYear=function(id,val){
+  _setRootStartYear(id,val);
+  autosave();
+};
+const _setBranchYear=setBranchYear;
+setBranchYear=function(rootId,idx,rowIdx,monthIdx,val){
+  _setBranchYear(rootId,idx,rowIdx,monthIdx,val);
+  autosave();
+};
+const _setBranchRate=setBranchRate;
+setBranchRate=function(rootId,idx,rowIdx,val){
+  _setBranchRate(rootId,idx,rowIdx,val);
+  autosave();
+};
+const _setBranchAction=setBranchAction;
+setBranchAction=function(rootId,idx,value){
+  _setBranchAction(rootId,idx,value);
+  autosave();
+};
+const _setRootAction=setRootAction;
+setRootAction=function(id,val){
+  _setRootAction(id,val);
+  autosave();
+};
+const _syncSettings=syncSettings;
+syncSettings=function(){
+  _syncSettings();
+  autosave();
+};
+const _addMainAccount=addMainAccount;
+addMainAccount=function(){
+  _addMainAccount();
+  autosave();
+};
+const _removeMainAccount=removeMainAccount;
+removeMainAccount=function(id){
+  _removeMainAccount(id);
+  autosave();
+};
+
+/* On refresh, load saved browser data first. */
+if(!loadData(false)){
   renderAll();
 }
-renderAll();
 </script>
 
 <div id="yearlyReportOverlay" class="reportOverlay">
