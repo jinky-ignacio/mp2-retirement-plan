@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MP2 Journey Planner - Main Accounts View</title>
+<style>
+:root{
+  --bg:#f7faf8; --card:#ffffff; --ink:#183027; --muted:#6f7e76;
+  --line:#e2e9e4; --green:#2f6b4f; --green-2:#3e8161; --soft:#edf5f0;
+  --mint:#e7f2eb; --gold:#b98a3d; --gold-soft:#fff5de; --rose:#fdeeee;
+  --shadow:0 8px 24px rgba(24,48,39,.06);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+button,input,select{font:inherit}
+.wrap{max-width:1560px;margin:auto;padding:18px}
+.header{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding:4px 6px 16px 6px;flex-wrap:wrap
+}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  width:46px;height:46px;border-radius:14px;background:linear-gradient(180deg,#d9f0df,#eef8f1);
+  display:grid;place-items:center;font-size:24px;border:1px solid var(--line)
+}
+.brand h1{margin:0;font-size:18px}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--line);background:white;color:var(--ink);
+  border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer
+}
+.btn.primary{background:var(--green);color:white;border-color:var(--green)}
+.btn.soft{background:var(--soft)}
+.btn.rose{background:var(--rose);color:#963f3f;border-color:#f4d4d4}
+.grid{display:grid;grid-template-columns:300px 1fr;gap:16px}
+@media(max-width:1120px){.grid{grid-template-columns:1fr}}
+.sidecol,.maincol{display:flex;flex-direction:column;gap:16px}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:18px;
+  box-shadow:var(--shadow);padding:16px
+}
+.card h2{margin:0 0 12px;font-size:15px}
+.small{font-size:12px;color:var(--muted);line-height:1.5}
+.people{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.person{
+  border:1px solid var(--line);border-radius:14px;padding:12px;background:#fbfdfc;text-align:center
+}
+.person .name{font-size:12px;font-weight:800}
+.person .age{font-size:29px;font-weight:900;margin:6px 0 4px}
+.person .meta{font-size:11px;color:var(--muted)}
+.fields{display:grid;grid-template-columns:1fr;gap:10px}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.field input{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.kpiGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.kpi{
+  border:1px solid var(--line);border-radius:14px;padding:12px;background:#fbfdfc
+}
+.kpi .lab{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi .val{font-size:16px;font-weight:900;margin-top:4px}
+.kpi.big{grid-column:1/-1;text-align:center;background:var(--soft)}
+.kpi.big .val{font-size:26px;color:var(--green)}
+
+.summaryTop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.summaryTop .summaryFilterWrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.summaryTop select{
+  border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;min-width:170px
+}
+.scopeInfo{
+  border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:#fbfdfc;margin-bottom:12px
+}
+.scopeInfo .scopeTitle{font-size:12px;color:var(--muted);margin-bottom:8px}
+.scopeInfo .scopeValue{font-size:14px;font-weight:900;color:var(--ink)}
+.finalAges{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.finalAge{
+  border:1px solid var(--line);border-radius:12px;padding:9px;background:#f7faf8;text-align:center
+}
+.finalAge .n{font-size:10px;color:var(--muted);font-weight:700}
+.finalAge .a{font-size:18px;font-weight:900;margin:3px 0}
+.finalAge .m{font-size:10px;color:var(--muted);line-height:1.25}
+
+.legend{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.legendItem{
+  display:flex;align-items:flex-start;gap:8px;border:1px solid var(--line);
+  border-radius:12px;padding:10px;background:#fcfefd;font-size:12px
+}
+.dot{width:12px;height:12px;border-radius:999px;background:var(--green);margin-top:3px}
+.dot.gold{background:var(--gold)}
+.mainHeader{
+  display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap
+}
+.mainHeader .title h2{font-size:28px;margin:0 0 4px}
+.mainHeader .title p{margin:0;color:var(--muted)}
+.badgeRow{display:flex;gap:8px;flex-wrap:wrap}
+.badge{
+  min-width:88px;text-align:center;padding:10px 12px;border-radius:12px;
+  background:#fafbfd;border:1px solid var(--line)
+}
+.badge b{display:block;font-size:20px;color:var(--green)}
+.helper{
+  margin-top:12px;background:var(--gold-soft);border:1px solid #f1e2bd;color:#5e4b21;
+  padding:10px 12px;border-radius:12px;font-size:12px
+}
+.accountsTable{
+  margin-top:16px;border:1px solid var(--line);border-radius:22px;overflow:hidden;
+  background:linear-gradient(180deg,#f7fbf8 0%, #f3f8f5 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7)
+}
+#accountsHost{display:flex;flex-direction:column;gap:14px;padding:14px}
+.acc-head,.acc-row{
+  display:grid;grid-template-columns:44px minmax(240px,1.4fr) repeat(4,minmax(110px,.7fr)) 150px 100px;
+  gap:10px;align-items:center;padding:14px 16px
+}
+@media(max-width:1280px){
+  .acc-head,.acc-row{grid-template-columns:44px minmax(220px,1.5fr) repeat(3,minmax(105px,.8fr)) 140px 96px}
+  .hide-md{display:none}
+}
+@media(max-width:980px){
+  .acc-head{display:none}
+  .acc-row{
+    grid-template-columns:44px 1fr auto;gap:10px;
+    padding:14px
+  }
+  .rowMetrics{grid-column:2/-1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+  .mobileMetric{border:1px solid #c4d8cb;border-radius:12px;padding:8px;background:#edf6f0;font-size:11px}
+}
+.rowMetrics{display:none}
+.acc-head{
+  background:linear-gradient(180deg,#fbfdfc,#f2f7f4);
+  font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;
+  border-bottom:1px solid var(--line)
+}
+.acc-row{
+  border:1px solid #b9d0c1;border-radius:20px;
+  background:linear-gradient(180deg,#dfeee5 0%, #d2e6da 100%);
+  box-shadow:0 12px 28px rgba(24,48,39,.08);
+  position:relative;overflow:hidden
+}
+.acc-row::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:8px;
+  background:linear-gradient(180deg,#2c684d,#214e3a);
+}
+.expand{
+  width:36px;height:36px;border-radius:12px;border:0;background:linear-gradient(180deg,#d0e6d8,#bfdbc9);color:#214e3a;
+  font-weight:900;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.55)
+}
+.accountName{font-size:20px;font-weight:900;letter-spacing:-.02em}
+.accountSub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35}
+.money{font-weight:900;font-size:17px}
+.greenText{color:var(--green)}
+.actionCell{display:flex;gap:8px;justify-content:flex-end}
+.iconBtn{
+  width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:white;cursor:pointer
+}
+.iconBtn.rose{background:var(--rose);border-color:#f3d2d2;color:#9a4444}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:999px;
+  background:linear-gradient(180deg,#d7eadf,#c5dfd0);color:#214e3a;font-size:11px;font-weight:800;
+  border:1px solid #b9d2c2
+}
+.branchWrap{
+  border:1px solid #d8e7dd;border-top:0;padding:18px 18px 16px;
+  background:linear-gradient(180deg,#eff7f2 0%,#f7fbf8 100%);display:none;
+  border-radius:0 0 22px 22px; margin-top:-12px; position:relative
+}
+.branchWrap::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#76af8c,#b6d6c2);
+  border-radius:0 0 0 22px
+}
+.acc-row.open{border-radius:22px 22px 0 0}
+.acc-row.open + .branchWrap{display:block}
+.journeyHeader{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px
+}
+.journeyChain{display:flex;gap:10px;align-items:center;overflow:auto;padding-bottom:2px}
+.chainCard{
+  min-width:190px;padding:14px;border:1px solid #dce8e1;border-radius:16px;
+  background:linear-gradient(180deg,#ffffff,#f9fcfa)
+}
+.chainCard b{display:block;font-size:13px}
+.chainCard .period{font-size:11px;color:var(--muted);margin:3px 0 7px}
+.chainCard .amt{font-size:19px;font-weight:900;color:var(--green)}
+.chainArrow{font-size:22px;color:#8fb09a}
+.branchBlock{
+  border:1px solid #d7e5dc;border-radius:18px;background:white;margin-top:12px;overflow:hidden;
+  box-shadow:0 10px 24px rgba(24,48,39,.04)
+}
+.branchBlock.rootSeg{
+  border-color:#b9d4c2;
+  background:linear-gradient(180deg,#f4faf6 0%, #edf6f0 100%);
+}
+.branchBlock.linkedSeg{border-color:#dbe4ee}
+.branchTop{
+  display:grid;
+  grid-template-columns:42px minmax(220px,1.15fr) minmax(220px,.95fr) 150px minmax(220px,.95fr);
+  gap:14px;align-items:center;padding:14px 16px;background:#fcfefd
+}
+.branchTop.rootTop{
+  background:linear-gradient(180deg,#deefe5,#f4faf6)
+}
+.branchTop.linkedTop{
+  background:linear-gradient(180deg,#f4f7fb,#fbfcfe)
+}
+@media(max-width:1180px){
+  .branchTop{grid-template-columns:42px 1fr auto}
+  .branchMetrics{grid-column:2/-1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+  .maturityFamily{grid-column:2/-1}
+}
+.branchToggle{
+  width:32px;height:32px;border-radius:11px;border:0;background:linear-gradient(180deg,#eff5f1,#e5efe9);color:var(--green);font-weight:900;cursor:pointer
+}
+.branchTitle{font-size:17px;font-weight:900;letter-spacing:-.01em}
+.branchSub{font-size:12px;color:var(--muted);line-height:1.35}
+.branchBody{display:none;border-top:1px solid var(--line);padding:14px;background:#fff}
+.branchBlock.open .branchBody{display:block}
+
+.maturityFamily{
+  border:1px solid #cfe0d5;border-radius:16px;padding:12px 14px;
+  background:linear-gradient(180deg,#ffffff,#f7fbf8);
+}
+.maturityFamily .mfTitle{
+  font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px
+}
+.maturityFamily .mfYear{font-size:12px;color:var(--green);font-weight:800;margin-left:4px}
+.mfGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mfCard{
+  border:1px solid #dce8e1;border-radius:12px;padding:9px 8px;background:#fbfefc;text-align:center
+}
+.mfCard .mfName{font-size:10px;color:var(--muted);font-weight:700}
+.mfCard .mfAge{font-size:20px;line-height:1;font-weight:900;color:var(--ink);margin:4px 0}
+.mfCard .mfMeta{font-size:10px;color:var(--muted);line-height:1.25}
+
+.monthGrid{overflow:auto}
+.monthGrid table{width:100%;min-width:1280px;border-collapse:collapse;font-size:12px}
+.monthGrid th,.monthGrid td{padding:8px;border:1px solid var(--line);text-align:right}
+.monthGrid th{background:#f5faf7;font-weight:800}
+.monthGrid th:first-child,.monthGrid td:first-child{text-align:left}
+.monthGrid input,.monthGrid select{
+  width:100%;min-width:66px;border:1px solid var(--line);border-radius:9px;padding:6px 8px;text-align:right
+}
+.monthGrid .readonly{background:#f8fbf9;font-weight:900}
+.monthGrid .rollCell{background:#eef8f2;color:var(--green);font-weight:900}
+.summaryLine{
+  display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px
+}
+.inlineAction{
+  display:flex;gap:8px;align-items:center;justify-content:flex-end
+}
+.inlineAction select{border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:white}
+.empty{
+  padding:18px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);text-align:center;background:#fbfdfc
+}
+.footerNote{padding:8px 2px 0;color:var(--muted);font-size:11px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">💰</div>
+      <div>
+        <h1>MP2 Journey Planner</h1>
+        <p>Public-safe planner • your actual entries stay in this browser unless you export them yourself</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn soft" onclick="loadData()">Load</button>
+      <button class="btn soft" onclick="saveData()">Save</button>
+      <button class="btn primary" onclick="addMainAccount()">+ Add MP2 Account</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="sidecol">
+      <div class="card">
+        <h2>👨‍👩‍👦 Our Family</h2>
+        <div id="familyCards" class="people"></div>
+        <div class="fields" style="margin-top:12px">
+          <div class="field"><label>Adult 1 birth year</label><input id="momBirth" type="number" value="" placeholder="e.g. 1990" onchange="syncSettings()"></div>
+          <div class="field"><label>Adult 2 birth year</label><input id="dadBirth" type="number" value="" placeholder="e.g. 1990" onchange="syncSettings()"></div>
+          <div class="field"><label>Child birth year</label><input id="kidBirth" type="number" value="" placeholder="e.g. 2020" onchange="syncSettings()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🎯 Goals</h2>
+        <div class="fields">
+          <div class="field"><label>Target retirement age (Adult 1)</label><input id="retAge" type="number" value="60" onchange="syncSettings()"></div>
+          <div class="field"><label>Target monthly expense today (₱)</label><input id="monthlyGoal" type="number" value="" placeholder="e.g. 100000" onchange="syncSettings()"></div>
+          <div class="field"><label>Inflation assumption (%)</label><input id="inflation" type="number" value="3.5" step="0.1" onchange="syncSettings()"></div>
+          <div class="field"><label>Default maturity month</label><input id="defaultMatMonth" type="number" value="5" min="1" max="12" onchange="syncSettings()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="summaryTop">
+          <h2 style="margin:0">📊 MP2 Summary</h2>
+          <div class="summaryFilterWrap">
+            <label for="summaryFilter" style="margin:0;font-size:11px;color:var(--muted)">View</label>
+            <select id="summaryFilter" onchange="setSummaryFilter(this.value)"></select>
+          </div>
+        </div>
+        <div id="summaryScopeInfo" class="scopeInfo"></div>
+        <div id="kpis" class="kpiGrid"></div>
+      </div>
+
+      <div class="card">
+        <h2>Quick Actions</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" onclick="addMainAccount()">+ Add MP2 Account</button>
+          <button class="btn rose" onclick="resetData()">Reset Blank Template</button>
+        </div>
+      </div>
+
+
+      <div class="card">
+        <h2>🔒 Privacy</h2>
+        <div class="small">
+          This public-safe version contains no real MP2 account numbers, personal contribution history, or personal birth years in the source code.
+          Data entered here is saved only in this browser via localStorage when you click Save.
+          Do not enter MP2 account numbers, MID numbers, passwords, bank details, or government IDs.
+        </div>
+      </div>
+      <div class="card">
+        <h2>Guide</h2>
+        <div class="legend">
+          <div class="legendItem"><span class="dot"></span><div><b>Reinvest</b><br>Creates the next branch automatically.</div></div>
+          <div class="legendItem"><span class="dot gold"></span><div><b>Harvest</b><br>Stops the chain on that branch.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="maincol">
+      <div class="card">
+        <div class="mainHeader">
+          <div class="title">
+            <h2>🏦 MP2 Accounts</h2>
+            <p>Only your original / main MP2 accounts are shown here. Click an account to reveal its entire reinvestment journey.</p>
+          </div>
+          <div class="badgeRow" id="badges"></div>
+        </div>
+        <div class="helper">
+          Click the play button to expand a main account. Inside it, you'll see the root account plus all linked rollover accounts, and you can continue the chain by setting the latest branch to <b>Reinvest</b>.
+        </div>
+
+        <div class="accountsTable">
+          <div class="acc-head">
+            <div></div>
+            <div>Account</div>
+            <div>Total Contributions</div>
+            <div>Est. Dividends</div>
+            <div>Maturity Value</div>
+            <div class="hide-md">Next Maturity</div>
+            <div>Action</div>
+            <div></div>
+          </div>
+          <div id="accountsHost"></div>
+        </div>
+
+        <div class="footerNote">
+          Dashboard rows show only original MP2 accounts. Linked reinvested accounts are hidden from the dashboard itself and appear only inside the expanded journey of the selected original account.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const actualRates={2023:7.03,2024:7.10,2025:7.12};
+const currentYear=new Date().getFullYear();
+
+function P(n){ return "₱"+Math.round(Number(n||0)).toLocaleString("en-PH"); }
+function uid(){ return "id"+Math.random().toString(36).slice(2,10); }
+function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+function makeYear(year,values=[]){
+  const m=Array(12).fill(0);
+  values.forEach((v,i)=>m[i]=Number(v||0));
+  return {year,rate:(actualRates[year]??7),m};
+}
+function ageFromYear(year,birth){ return Math.max(0,year-Number(birth||0)); }
+function kidStage(age){
+  if(age<6) return "Pre-school";
+  if(age<=18) return "Grade "+(age-6);
+  if(age<=23) return (age-18)+" yr college";
+  return "Adult";
+}
+function monthName(num){ return months[(Number(num||1)-1+12)%12]; }
+
+const demoRoots=[
+  {
+    id:uid(),
+    name:"MP2 Account 1",
+    startYear:currentYear,
+    maturityMonth:5,
+    expanded:false,
+    action:"harvest",
+    years:[
+      makeYear(currentYear,[]),
+      makeYear(currentYear+1,[]),
+      makeYear(currentYear+2,[]),
+      makeYear(currentYear+3,[]),
+      makeYear(currentYear+4,[])
+    ],
+    _branches:{}
+  }
+];
+
+let state={
+  settings:{momBirth:0,dadBirth:0,kidBirth:0,retAge:60,monthlyGoal:0,inflation:3.5,defaultMatMonth:5},
+  roots:clone(demoRoots),
+  summaryFilter:"overall"
+};
+
+const segmentOpenState={};
+
+function resetData(){
+  if(confirm("Reset to blank template?")){
+    state.roots=clone(demoRoots);
+    renderAll();
+  }
+}
+function syncSettings(){
+  ["momBirth","dadBirth","kidBirth","retAge","monthlyGoal","inflation","defaultMatMonth"].forEach(k=>{
+    state.settings[k]=Number(document.getElementById(k).value||0);
+  });
+  renderAll();
+}
+function addMainAccount(){
+  const y=Number(prompt("Start year of the new main MP2 account:", currentYear));
+  if(!y) return;
+  const count=state.roots.length+1;
+  state.roots.push({
+    id:uid(),name:"MP2 Account "+count,startYear:y,maturityMonth:state.settings.defaultMatMonth||5,
+    expanded:true,action:"harvest",
+    years:[makeYear(y,[]),makeYear(y+1,[]),makeYear(y+2,[]),makeYear(y+3,[]),makeYear(y+4,[])],
+    _branches:{}
+  });
+  renderAll();
+}
+function removeMainAccount(id){
+  if(!confirm("Delete this main MP2 account and its whole reinvestment journey?")) return;
+  state.roots=state.roots.filter(r=>r.id!==id);
+  renderAll();
+}
+function updateRoot(id,key,val){
+  const r=state.roots.find(x=>x.id===id); if(!r) return;
+  if(key==="name") r.name=val;
+  if(key==="expanded") r.expanded=!!val;
+  renderAll(false);
+}
+function setRootAction(id,val){
+  const r=state.roots.find(x=>x.id===id);
+  r.action=val;
+  if(val==="harvest" && r._branches){ r._branches={}; } // stop future chain cleanly
+  renderAll(false);
+}
+function setRootYear(id,rowIdx,monthIdx,val){
+  const r=state.roots.find(x=>x.id===id);
+  r.years[rowIdx].m[monthIdx]=Math.max(0,Number(val)||0);
+  renderAll(false);
+}
+function setRootRate(id,rowIdx,val){
+  const r=state.roots.find(x=>x.id===id);
+  r.years[rowIdx].rate=Math.max(0,Number(val)||0);
+  renderAll(false);
+}
+function setRootMaturityMonth(id,val){
+  const r=state.roots.find(x=>x.id===id);
+  r.maturityMonth=Number(val)||5;
+  renderAll(false);
+}
+function normalizeYearArray(arr,startYear){
+  while(arr.length<5){ arr.push(makeYear(startYear+arr.length,[])); }
+  arr=arr.slice(0,5);
+  arr.forEach((y,i)=>{ y.year=startYear+i; if(!Array.isArray(y.m)) y.m=Array(12).fill(0); if(y.m.length<12) y.m=Array.from({length:12},(_,j)=>Number(y.m[j]||0)); if(y.rate==null) y.rate=7; });
+  return arr;
+}
+function normalizeRoot(root){
+  root.years=normalizeYearArray(root.years||[], root.startYear);
+  if(!root._branches) root._branches={};
+}
+function calcSegment(years){
+  let opening=0,totalManual=0,totalDiv=0,rows=[];
+  years.forEach((row)=>{
+    const manual=row.m.reduce((s,v)=>s+Number(v||0),0);
+    const total=manual;
+    let weighted=0;
+    row.m.forEach((v,mi)=> weighted += Number(v||0)*(12-mi));
+    const div=opening*(Number(row.rate||0)/100) + (weighted/12)*(Number(row.rate||0)/100);
+    const end=opening + total + div;
+    rows.push({year:row.year,manual,total,div,end,rate:row.rate,opening});
+    opening=end; totalManual+=manual; totalDiv+=div;
+  });
+  return {
+    maturity:opening,
+    totalManual,totalDiv,
+    totalContrib:rows.reduce((s,r)=>s+r.total,0),
+    rows
+  };
+}
+function ensureBranchRecord(root, idx, startYear, seed){
+  root._branches = root._branches || {};
+  if(!root._branches[idx]){
+    const years = normalizeYearArray(Array.from({length:5},(_,i)=>makeYear(startYear+i,[])), startYear);
+    const seedMonth=Math.max(0,Math.min(11,(Number(root.maturityMonth||5)-1)));
+    years[0].m[seedMonth]=Math.round(seed);
+    root._branches[idx]={
+      action:"harvest",
+      startYear,
+      seedBase:Math.round(seed),
+      years
+    };
+  } else {
+    root._branches[idx].startYear=startYear;
+    root._branches[idx].years=normalizeYearArray(root._branches[idx].years||[], startYear);
+    if(root._branches[idx].seedBase==null) root._branches[idx].seedBase=Math.round(seed);
+  }
+  return root._branches[idx];
+}
+function buildJourney(root){
+  normalizeRoot(root);
+  const segs=[];
+  let years=root.years;
+  let startYear=root.startYear;
+  let action=root.action || "harvest";
+  let matMonth=Number(root.maturityMonth||5);
+  let idx=0;
+
+  while(true){
+    const calc=calcSegment(years);
+    segs.push({
+      idx,
+      title:idx===0?root.name:(root.name+" → Rollover "+idx),
+      isRoot:idx===0,
+      startYear,
+      maturityYear:startYear+5,
+      maturityMonth:matMonth,
+      action,
+      calc,
+      years
+    });
+
+    if(action!=="reinvest" || idx>10) break;
+
+    const nextIdx=idx+1;
+    const branch=ensureBranchRecord(root,nextIdx,startYear+5,calc.maturity);
+    years=branch.years;
+    startYear=branch.startYear;
+    action=branch.action || "harvest";
+    idx=nextIdx;
+  }
+  return segs;
+}
+function toggleMain(id){
+  const r=state.roots.find(x=>x.id===id);
+  r.expanded=!r.expanded;
+  renderAll(false);
+}
+function toggleSegment(rootId, idx){
+  const key=rootId+"_"+idx;
+  segmentOpenState[key]=!segmentOpenState[key];
+  renderAll(false);
+}
+function setBranchAction(rootId, idx, value){
+  const root=state.roots.find(x=>x.id===rootId);
+  if(!root) return;
+  normalizeRoot(root);
+  if(idx===0){
+    root.action=value;
+    if(value==="harvest"){ root._branches={}; }
+  } else {
+    const currentJourney=buildJourney(root);
+    const seg=currentJourney.find(s=>s.idx===idx);
+    if(!seg) return;
+    const branch=ensureBranchRecord(root, idx, seg.startYear, seg.calc.maturity);
+    branch.action=value;
+    if(value==="harvest"){
+      Object.keys(root._branches).forEach(k=>{ if(Number(k)>idx) delete root._branches[k]; });
+    }
+  }
+  renderAll(false);
+}
+function setBranchYear(rootId, idx, rowIdx, monthIdx, val){
+  const root=state.roots.find(x=>x.id===rootId); if(!root) return;
+  normalizeRoot(root);
+  const currentJourney=buildJourney(root);
+  const seg=currentJourney.find(s=>s.idx===idx); if(!seg) return;
+  const branch=ensureBranchRecord(root, idx, seg.startYear, seg.calc.maturity);
+  branch.years[rowIdx].m[monthIdx]=Math.max(0,Number(val)||0);
+  renderAll(false);
+}
+function setBranchRate(rootId, idx, rowIdx, val){
+  const root=state.roots.find(x=>x.id===rootId); if(!root) return;
+  normalizeRoot(root);
+  const currentJourney=buildJourney(root);
+  const seg=currentJourney.find(s=>s.idx===idx); if(!seg) return;
+  const branch=ensureBranchRecord(root, idx, seg.startYear, seg.calc.maturity);
+  branch.years[rowIdx].rate=Math.max(0,Number(val)||0);
+  renderAll(false);
+}
+function renderFamily(){
+  const year=currentYear;
+  const cards = [
+    ["Adult 1", state.settings.momBirth?ageFromYear(year,state.settings.momBirth):"—", state.settings.momBirth?("Birth Year: "+state.settings.momBirth):"Set birth year"],
+    ["Adult 2", state.settings.dadBirth?ageFromYear(year,state.settings.dadBirth):"—", state.settings.dadBirth?("Birth Year: "+state.settings.dadBirth):"Set birth year"],
+    ["Child", state.settings.kidBirth?ageFromYear(year,state.settings.kidBirth):"—", state.settings.kidBirth?kidStage(ageFromYear(year,state.settings.kidBirth)):"Set birth year"]
+  ];
+  document.getElementById("familyCards").innerHTML = cards.map(c=>`
+    <div class="person">
+      <div class="name">${c[0]}</div>
+      <div class="age">${c[1]}</div>
+      <div class="meta">${c[2]}</div>
+    </div>
+  `).join("");
+  ["momBirth","dadBirth","kidBirth","retAge","monthlyGoal","inflation","defaultMatMonth"].forEach(k=>{
+    document.getElementById(k).value = state.settings[k];
+  });
+}
+function setSummaryFilter(value){
+  state.summaryFilter=value;
+  renderSummary();
+}
+function renderSummary(){
+  const journeys = state.roots.map(r=>({root:r, segs:buildJourney(r)}));
+  const filterEl = document.getElementById("summaryFilter");
+  const opts = ['<option value="overall">Overall</option>']
+    .concat(journeys.map(j=>`<option value="${j.root.id}">${j.root.name}</option>`))
+    .join("");
+  if(filterEl){
+    filterEl.innerHTML = opts;
+    if(!state.summaryFilter || (!journeys.find(j=>j.root.id===state.summaryFilter) && state.summaryFilter!=="overall")){
+      state.summaryFilter = "overall";
+    }
+    filterEl.value = state.summaryFilter;
+  }
+
+  const totalRoots = journeys.length;
+  const allSegments = journeys.flatMap(x=>x.segs);
+  const active = allSegments.filter(x=>x.action==="reinvest").length;
+  const matured = allSegments.filter(x=>x.action==="harvest").length;
+
+  let scopeTitle="", scopeValue="", kpisHTML="", scopeInfoHTML="";
+  if(state.summaryFilter==="overall"){
+    const totalContrib = allSegments.reduce((s,x)=>s+x.calc.totalContrib,0);
+    const totalDiv = allSegments.reduce((s,x)=>s+x.calc.totalDiv,0);
+    const finalTotals = journeys.reduce((s,j)=>s + (j.segs[j.segs.length-1]?.calc.maturity||0), 0);
+    const nextSeg = [...allSegments].sort((a,b)=>a.maturityYear-b.maturityYear)[0];
+    scopeTitle = "Scope";
+    scopeValue = "Overall view across all main MP2 accounts";
+    scopeInfoHTML = `
+      <div class="scopeTitle">${scopeTitle}</div>
+      <div class="scopeValue">${scopeValue}</div>
+    `;
+    kpisHTML = `
+      <div class="kpi"><div class="lab">Total Contributions</div><div class="val">${P(totalContrib)}</div></div>
+      <div class="kpi"><div class="lab">Est. Dividends</div><div class="val">${P(totalDiv)}</div></div>
+      <div class="kpi big"><div class="lab">Combined Final Value</div><div class="val">${P(finalTotals)}</div></div>
+      <div class="kpi"><div class="lab">Main Accounts</div><div class="val">${totalRoots}</div></div>
+      <div class="kpi"><div class="lab">Linked Segments</div><div class="val">${allSegments.length}</div></div>
+      <div class="kpi"><div class="lab">Next Maturity</div><div class="val">${nextSeg?(monthName(nextSeg.maturityMonth)+" "+nextSeg.maturityYear):"—"}</div></div>
+      <div class="kpi"><div class="lab">Next Amount</div><div class="val">${P(nextSeg?.calc.maturity||0)}</div></div>
+    `;
+  } else {
+    const selected = journeys.find(j=>j.root.id===state.summaryFilter);
+    if(selected){
+      const segs = selected.segs;
+      const lastSeg = segs[segs.length-1];
+      const totalContrib = segs.reduce((s,x)=>s+x.calc.totalContrib,0);
+      const totalDiv = segs.reduce((s,x)=>s+x.calc.totalDiv,0);
+      const finalYear = lastSeg.maturityYear;
+      const momAge = state.settings.momBirth?ageFromYear(finalYear, state.settings.momBirth):"—";
+      const dadAge = state.settings.dadBirth?ageFromYear(finalYear, state.settings.dadBirth):"—";
+      const kidAge = state.settings.kidBirth?ageFromYear(finalYear, state.settings.kidBirth):null;
+      scopeInfoHTML = `
+        <div class="scopeTitle">Filtered by main MP2 account</div>
+        <div class="scopeValue">${selected.root.name}</div>
+        <div class="small" style="margin-top:6px">This shows the total journey of this account including all linked reinvestments up to the currently last configured maturity.</div>
+        <div class="finalAges">
+          <div class="finalAge">
+            <div class="n">Adult 1 at final maturity</div>
+            <div class="a">${momAge}</div>
+            <div class="m">years old</div>
+          </div>
+          <div class="finalAge">
+            <div class="n">Adult 2 at final maturity</div>
+            <div class="a">${dadAge}</div>
+            <div class="m">years old</div>
+          </div>
+          <div class="finalAge">
+            <div class="n">Child at final maturity</div>
+            <div class="a">${kidAge!=null?kidAge:"—"}</div>
+            <div class="m">${kidAge!=null?kidStage(kidAge):"Set birth year"}</div>
+          </div>
+        </div>
+      `;
+      kpisHTML = `
+        <div class="kpi"><div class="lab">Journey Contributions</div><div class="val">${P(totalContrib)}</div></div>
+        <div class="kpi"><div class="lab">Journey Dividends</div><div class="val">${P(totalDiv)}</div></div>
+        <div class="kpi big"><div class="lab">Final Value After ${segs.length-1} Reinvestments</div><div class="val">${P(lastSeg.calc.maturity)}</div></div>
+        <div class="kpi"><div class="lab">Journey Segments</div><div class="val">${segs.length}</div></div>
+        <div class="kpi"><div class="lab">Reinvestments Done</div><div class="val">${Math.max(0,segs.length-1)}</div></div>
+        <div class="kpi"><div class="lab">Last Maturity</div><div class="val">${monthName(lastSeg.maturityMonth)} ${lastSeg.maturityYear}</div></div>
+        <div class="kpi"><div class="lab">Final Segment</div><div class="val">${lastSeg.title.replace(selected.root.name + ' → ','')}</div></div>
+      `;
+    }
+  }
+
+  document.getElementById("summaryScopeInfo").innerHTML = scopeInfoHTML;
+  document.getElementById("kpis").innerHTML = kpisHTML;
+  document.getElementById("badges").innerHTML = `
+    <div class="badge">Main Accounts<b>${totalRoots}</b></div>
+    <div class="badge">Active<b>${active}</b></div>
+    <div class="badge">Harvest<b>${matured}</b></div>
+  `;
+}
+function metricCard(label, value){
+  return `<div class="mobileMetric"><div style="color:var(--muted)">${label}</div><b>${value}</b></div>`;
+}
+function renderAccounts(){
+  const host=document.getElementById("accountsHost");
+  if(!state.roots.length){ host.innerHTML = `<div class="empty">No main MP2 accounts yet.</div>`; return; }
+
+  host.innerHTML = state.roots.map(root=>{
+    normalizeRoot(root);
+    const journey = buildJourney(root);
+    const rootSeg = journey[0];
+    const rootCalc = rootSeg.calc;
+    const matLabel = monthName(root.maturityMonth) + " " + rootSeg.maturityYear;
+    const mobileMetrics = `
+      <div class="rowMetrics">
+        ${metricCard("Total Contributions", P(rootCalc.totalContrib))}
+        ${metricCard("Est. Dividends", '<span class="greenText">'+P(rootCalc.totalDiv)+'</span>')}
+        ${metricCard("Maturity Value", P(rootCalc.maturity))}
+        ${metricCard("Next Maturity", matLabel)}
+      </div>
+    `;
+    const chain = journey.map((seg,i)=>`
+      ${i?'<div class="chainArrow">→</div>':''}
+      <div class="chainCard">
+        <span class="chip">${seg.isRoot?'Main Account':'Linked Rollover'}</span>
+        <b>${seg.title}</b>
+        <div class="period">${seg.startYear}–${seg.startYear+4}</div>
+        <div class="amt">${P(seg.calc.maturity)}</div>
+      </div>
+    `).join("");
+
+    const blocks = journey.map((seg,idx)=>{
+      const key=root.id+"_"+idx;
+      const isOpen=!!segmentOpenState[key];
+      const branchMeta = idx>0 ? (root._branches && root._branches[idx]) : null;
+      const rows = seg.calc.rows.map((r,rowIdx)=>{
+        const row = seg.years[rowIdx];
+        const monthCells = row.m.map((v,mi)=>{
+          const val = v ? v : "";
+          const onch = idx===0
+            ? `setRootYear('${root.id}',${rowIdx},${mi},this.value)`
+            : `setBranchYear('${root.id}',${idx},${rowIdx},${mi},this.value)`;
+          return `<td><input type="number" min="0" value="${val}" onchange="${onch}"></td>`;
+        }).join("");
+        const rateChange = idx===0
+          ? `setRootRate('${root.id}',${rowIdx},this.value)`
+          : `setBranchRate('${root.id}',${idx},${rowIdx},this.value)`;
+        return `<tr>
+          <td>${r.year}</td>
+          ${monthCells}
+          <td class="readonly">${P(r.total)}</td>
+          <td><input type="number" step="0.01" value="${row.rate}" onchange="${rateChange}"></td>
+          <td class="readonly">${P(r.div)}</td>
+          <td class="readonly">${P(r.end)}</td>
+        </tr>`;
+      }).join("");
+
+      const summaryLine = `
+        <div class="summaryLine">
+          <span>Contributions: <b>${P(seg.calc.totalContrib)}</b></span>
+          ${idx>0?`<span>Default rollover when created: <b>${P(branchMeta?.seedBase||0)}</b></span>`:''}
+          <span>Estimated dividends: <b>${P(seg.calc.totalDiv)}</b></span>
+          <span>Maturity value: <b>${P(seg.calc.maturity)}</b></span>
+        </div>
+      `;
+
+      return `<div class="branchBlock ${isOpen?'open':''} ${seg.isRoot?'rootSeg':'linkedSeg'}">
+        <div class="branchTop ${seg.isRoot?'rootTop':'linkedTop'}">
+          <button class="branchToggle" onclick="toggleSegment('${root.id}',${idx})">${isOpen?'▾':'▸'}</button>
+          <div>
+            <div class="branchTitle">${seg.title}</div>
+            <div class="branchSub">${seg.isRoot?'<span class="chip">Main Breakdown</span> Main account':'<span class="chip" style="background:linear-gradient(180deg,#f2f5fb,#eaeff9);color:#35537a;border-color:#dbe3f3">Linked Rollover</span> Branched from previous rollover'} • ${seg.startYear}–${seg.startYear+4} contributions</div>
+          </div>
+          <div class="branchMetrics">
+            ${metricCard("Contributions", P(seg.calc.totalContrib))}
+            ${metricCard("Dividends", '<span class="greenText">'+P(seg.calc.totalDiv)+'</span>')}
+            ${metricCard("Maturity Value", P(seg.calc.maturity))}
+            ${metricCard("Maturity", monthName(seg.maturityMonth)+' '+seg.maturityYear)}
+          </div>
+          <div class="inlineAction">
+            <select onchange="setBranchAction('${root.id}',${idx},this.value)">
+              <option value="reinvest" ${seg.action==='reinvest'?'selected':''}>Reinvest</option>
+              <option value="harvest" ${seg.action==='harvest'?'selected':''}>Harvest</option>
+            </select>
+          </div>
+          <div class="maturityFamily">
+            <div class="mfTitle">Family ages at maturity <span class="mfYear">${monthName(seg.maturityMonth)} ${seg.maturityYear}</span></div>
+            <div class="mfGrid">
+              <div class="mfCard">
+                <div class="mfName">Adult 1</div>
+                <div class="mfAge">${state.settings.momBirth?ageFromYear(seg.maturityYear, state.settings.momBirth):"—"}</div>
+                <div class="mfMeta">years old</div>
+              </div>
+              <div class="mfCard">
+                <div class="mfName">Adult 2</div>
+                <div class="mfAge">${state.settings.dadBirth?ageFromYear(seg.maturityYear, state.settings.dadBirth):"—"}</div>
+                <div class="mfMeta">years old</div>
+              </div>
+              <div class="mfCard">
+                <div class="mfName">Child</div>
+                <div class="mfAge">${state.settings.kidBirth?ageFromYear(seg.maturityYear, state.settings.kidBirth):"—"}</div>
+                <div class="mfMeta">${state.settings.kidBirth?kidStage(ageFromYear(seg.maturityYear, state.settings.kidBirth)):"Set birth year"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="branchBody">
+          ${summaryLine}
+          ${idx>0?`<div class="helper" style="margin:0 0 10px 0">This linked rollover branch is now <b>editable</b>. The maturity amount from the previous branch was used only as the <b>default starting deposit</b> when this branch was created. You may edit that amount and even add more contributions if you want to top it up.</div>`:''}
+          <div class="monthGrid">
+            <table>
+              <thead><tr><th>Year</th>${months.map(m=>`<th>${m}</th>`).join("")}<th>Total</th><th>Dividend %</th><th>Est. Dividend</th><th>Year-end Value</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+
+    return `
+      <div class="acc-row ${root.expanded?'open':''}">
+        <div><button class="expand" onclick="toggleMain('${root.id}')">${root.expanded?'▾':'▸'}</button></div>
+        <div>
+          <div class="accountName">${root.name}</div>
+          <div class="accountSub"><span class="chip">Main Account</span> <span style="margin-left:6px">Independent MP2 account • ${root.startYear}–${root.startYear+4} contributions</span></div>
+        </div>
+        <div class="money">${P(rootCalc.totalContrib)}</div>
+        <div class="money greenText">${P(rootCalc.totalDiv)}</div>
+        <div class="money">${P(rootCalc.maturity)}</div>
+        <div class="hide-md"><span class="chip">${matLabel}</span></div>
+        <div>
+          <select onchange="setRootAction('${root.id}',this.value)">
+            <option value="reinvest" ${root.action==='reinvest'?'selected':''}>Reinvest</option>
+            <option value="harvest" ${root.action==='harvest'?'selected':''}>Harvest</option>
+          </select>
+        </div>
+        <div class="actionCell">
+          <button class="iconBtn" onclick="updateRoot('${root.id}','expanded',true)">✎</button>
+          <button class="iconBtn rose" onclick="removeMainAccount('${root.id}')">🗑</button>
+        </div>
+        ${mobileMetrics}
+      </div>
+      <div class="branchWrap">
+        <div class="journeyHeader">
+          <div>
+            <div style="font-weight:900;font-size:15px">Breakdown of ${root.name}</div>
+            <div class="small">Only this original account is shown on the dashboard. All linked reinvested accounts live here inside the breakdown.</div>
+          </div>
+          <div class="chip">${journey.length} segment${journey.length>1?'s':''} in this journey</div>
+        </div>
+        <div class="journeyChain">${chain}</div>
+        <div style="margin-top:12px">${blocks}</div>
+      </div>
+    `;
+  }).join("");
+}
+function renderAll(syncFields=true){
+  if(syncFields){
+    ["momBirth","dadBirth","kidBirth","retAge","monthlyGoal","inflation","defaultMatMonth"].forEach(k=>{
+      const el=document.getElementById(k); if(el) el.value=state.settings[k];
+    });
+  }
+  renderFamily();
+  renderSummary();
+  renderAccounts();
+}
+function saveData(){
+  localStorage.setItem("mp2_journey_public_safe_v1", JSON.stringify(state));
+  alert("Saved on this browser/device.");
+}
+function loadData(){
+  const raw=localStorage.getItem("mp2_journey_public_safe_v1") || localStorage.getItem("mp2_journey_public_safe_v1");
+  if(!raw){ alert("No saved data found yet on this browser."); return; }
+  state=JSON.parse(raw);
+  renderAll();
+}
+renderAll();
+</script>
+</body>
+</html>
