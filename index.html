@@ -256,6 +256,84 @@ button,input,select{font:inherit}
   padding:18px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);text-align:center;background:#fbfdfc
 }
 .footerNote{padding:8px 2px 0;color:var(--muted);font-size:11px;line-height:1.5}
+
+.reportOverlay{
+  position:fixed;inset:0;background:rgba(14,31,23,.58);backdrop-filter:blur(6px);
+  display:none;z-index:9999;padding:24px;overflow:auto
+}
+.reportOverlay.open{display:block}
+.reportPanel{
+  width:min(1180px,100%);margin:0 auto;background:#fff;border-radius:24px;
+  border:1px solid #dfe8e2;box-shadow:0 28px 80px rgba(8,29,19,.28);overflow:hidden
+}
+.reportHeader{
+  padding:22px 24px;background:linear-gradient(135deg,#173f2d,#2f6b4f);color:#fff;
+  display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap
+}
+.reportHeader h2{margin:0 0 5px;font-size:25px}
+.reportHeader p{margin:0;opacity:.85;font-size:12px}
+.reportActions{display:flex;gap:8px;flex-wrap:wrap}
+.reportActions button{
+  border:1px solid rgba(255,255,255,.25);border-radius:11px;padding:9px 12px;
+  font-weight:800;cursor:pointer
+}
+.reportActions .pdfBtn{background:#fff;color:#234f3b}
+.reportActions .closeBtn{background:rgba(255,255,255,.13);color:#fff}
+.reportBody{padding:22px 24px}
+.reportHero{
+  display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:10px;margin-bottom:16px
+}
+@media(max-width:760px){.reportHero{grid-template-columns:1fr 1fr}.reportHero .reportBig{grid-column:1/-1}}
+.reportStat{
+  border:1px solid #dde8e1;border-radius:15px;padding:13px;background:#f8fbf9
+}
+.reportStat .rLab{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6e7b74}
+.reportStat .rVal{font-size:19px;font-weight:900;margin-top:4px;color:#183027}
+.reportBig{background:linear-gradient(180deg,#e7f2eb,#f4faf6)}
+.reportBig .rVal{font-size:27px;color:#2f6b4f}
+.reportTableWrap{overflow:auto;border:1px solid #dde7e1;border-radius:15px}
+.reportTable{width:100%;border-collapse:collapse;font-size:12px}
+.reportTable th,.reportTable td{
+  padding:10px 9px;border-bottom:1px solid #e5ebe7;text-align:right;white-space:nowrap
+}
+.reportTable th{
+  background:#eff6f2;color:#42564b;font-size:10px;text-transform:uppercase;letter-spacing:.04em;
+  position:sticky;top:0
+}
+.reportTable th:first-child,.reportTable td:first-child{text-align:left}
+.reportTable .yearRow{font-weight:900;font-size:14px}
+.reportTable .zero{color:#a0aaa4}
+.reportTable .cash{color:#2f6b4f;font-weight:900}
+.reportTable .reinvest{color:#45627c;font-weight:800}
+.reportEvents{font-size:11px;color:#66756d;max-width:280px;white-space:normal!important;line-height:1.4}
+.reportFoot{
+  margin-top:14px;padding:12px 14px;border-radius:13px;background:#fff6df;
+  border:1px solid #f0e0b8;font-size:11px;color:#5e4b21;line-height:1.5
+}
+.reportScope{
+  display:inline-flex;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.18);font-size:10px;font-weight:800;margin-top:8px
+}
+@media print{
+  body *{visibility:hidden!important}
+  #yearlyReportOverlay,#yearlyReportOverlay *{visibility:visible!important}
+  #yearlyReportOverlay{
+    position:absolute!important;inset:0!important;background:#fff!important;padding:0!important;
+    overflow:visible!important;display:block!important
+  }
+  .reportPanel{width:100%!important;box-shadow:none!important;border:0!important;border-radius:0!important}
+  .reportHeader{background:#fff!important;color:#183027!important;border-bottom:2px solid #2f6b4f}
+  .reportHeader p{color:#5f6f66!important}
+  .reportScope{color:#2f6b4f!important;border:1px solid #bdd3c5!important;background:#edf6f0!important}
+  .reportActions{display:none!important}
+  .reportBody{padding:14px 16px!important}
+  .reportTableWrap{overflow:visible!important}
+  .reportTable{font-size:10px!important}
+  .reportTable th,.reportTable td{padding:6px 5px!important}
+  .reportFoot{font-size:9px!important}
+  @page{size:A4 landscape;margin:10mm}
+}
+
 </style>
 </head>
 <body>
@@ -307,6 +385,7 @@ button,input,select{font:inherit}
         </div>
         <div id="summaryScopeInfo" class="scopeInfo"></div>
         <div id="kpis" class="kpiGrid"></div>
+        <button class="btn primary" style="width:100%;margin-top:12px" onclick="openYearlyReport()">📄 Generate Year-by-Year Summary</button>
       </div>
 
       <div class="card">
@@ -895,6 +974,119 @@ function renderAccounts(){
     `;
   }).join("");
 }
+
+function getReportScopeJourneys(){
+  const journeys=state.roots.map(r=>({root:r,segs:buildJourney(r)}));
+  if(state.summaryFilter && state.summaryFilter!=="overall"){
+    const one=journeys.find(j=>j.root.id===state.summaryFilter);
+    return one?[one]:[];
+  }
+  return journeys;
+}
+function buildYearlyHarvestRows(){
+  const journeys=getReportScopeJourneys();
+  const segments=journeys.flatMap(j=>j.segs.map(seg=>({root:j.root,seg})));
+  if(!segments.length) return {rows:[],journeys,segments};
+
+  const minStart=Math.min(currentYear,...segments.map(x=>x.seg.startYear));
+  const maxYear=Math.max(...segments.map(x=>x.seg.maturityYear));
+  const rows=[];
+  let cumulative=0;
+
+  for(let year=minStart;year<=maxYear;year++){
+    const events=segments.filter(x=>x.seg.maturityYear===year);
+    const gross=events.reduce((s,x)=>s+x.seg.calc.maturity,0);
+    const reinvested=events
+      .filter(x=>x.seg.action==="reinvest")
+      .reduce((s,x)=>s+x.seg.calc.maturity,0);
+    const harvest=events
+      .filter(x=>x.seg.action==="harvest")
+      .reduce((s,x)=>s+x.seg.calc.maturity,0);
+    cumulative+=harvest;
+
+    const adult1=state.settings.momBirth?ageFromYear(year,state.settings.momBirth):null;
+    const adult2=state.settings.dadBirth?ageFromYear(year,state.settings.dadBirth):null;
+    const child=state.settings.kidBirth?ageFromYear(year,state.settings.kidBirth):null;
+
+    rows.push({
+      year,events,gross,reinvested,harvest,cumulative,
+      adult1,adult2,child,
+      childStage:child!=null?kidStage(child):"—"
+    });
+  }
+  return {rows,journeys,segments};
+}
+function renderYearlyReport(){
+  const {rows,journeys,segments}=buildYearlyHarvestRows();
+  const scopeName=state.summaryFilter==="overall"
+    ?"Overall - All Main MP2 Accounts"
+    :(journeys[0]?.root.name || "Selected MP2 Account");
+  document.getElementById("reportScopeLabel").textContent=scopeName;
+
+  if(!rows.length){
+    document.getElementById("reportHero").innerHTML='<div class="empty reportBig">No MP2 data available for this report.</div>';
+    document.getElementById("reportRows").innerHTML="";
+    return;
+  }
+
+  const totalGross=rows.reduce((s,r)=>s+r.gross,0);
+  const totalReinvested=rows.reduce((s,r)=>s+r.reinvested,0);
+  const totalHarvest=rows.reduce((s,r)=>s+r.harvest,0);
+  const maturityYears=rows.filter(r=>r.events.length>0);
+  const firstMaturity=maturityYears[0]?.year ?? "—";
+  const lastMaturity=maturityYears[maturityYears.length-1]?.year ?? "—";
+
+  document.getElementById("reportHero").innerHTML=`
+    <div class="reportStat reportBig">
+      <div class="rLab">Total Cash Harvest</div>
+      <div class="rVal">${P(totalHarvest)}</div>
+    </div>
+    <div class="reportStat">
+      <div class="rLab">Gross Maturities</div>
+      <div class="rVal">${P(totalGross)}</div>
+    </div>
+    <div class="reportStat">
+      <div class="rLab">Total Reinvested</div>
+      <div class="rVal">${P(totalReinvested)}</div>
+    </div>
+    <div class="reportStat">
+      <div class="rLab">Maturity Window</div>
+      <div class="rVal">${firstMaturity}–${lastMaturity}</div>
+    </div>
+  `;
+
+  document.getElementById("reportRows").innerHTML=rows.map(r=>{
+    const eventText=r.events.length
+      ? r.events.map(e=>`${e.root.name}: ${e.seg.title.replace(e.root.name+" → ","")} (${e.seg.action==="reinvest"?"Reinvest":"Harvest"})`).join("<br>")
+      : "—";
+    const childText=r.child!=null?`${r.child} • ${r.childStage}`:"—";
+    return `<tr>
+      <td class="yearRow">${r.year}</td>
+      <td>${r.adult1??"—"}</td>
+      <td>${r.adult2??"—"}</td>
+      <td>${childText}</td>
+      <td class="reportEvents">${eventText}</td>
+      <td class="${r.gross?'':'zero'}">${P(r.gross)}</td>
+      <td class="${r.reinvested?'reinvest':'zero'}">${P(r.reinvested)}</td>
+      <td class="${r.harvest?'cash':'zero'}">${P(r.harvest)}</td>
+      <td class="${r.cumulative?'cash':'zero'}">${P(r.cumulative)}</td>
+    </tr>`;
+  }).join("");
+}
+function openYearlyReport(){
+  renderYearlyReport();
+  document.getElementById("yearlyReportOverlay").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+function closeYearlyReport(){
+  document.getElementById("yearlyReportOverlay").classList.remove("open");
+  document.body.style.overflow="";
+}
+function saveYearlyReportPDF(){
+  renderYearlyReport();
+  window.print();
+}
+
 function renderAll(syncFields=true){
   if(syncFields){
     ["momBirth","dadBirth","kidBirth","retAge","monthlyGoal","inflation","defaultMatMonth"].forEach(k=>{
@@ -917,5 +1109,46 @@ function loadData(){
 }
 renderAll();
 </script>
+
+<div id="yearlyReportOverlay" class="reportOverlay">
+  <div class="reportPanel">
+    <div class="reportHeader">
+      <div>
+        <h2>MP2 Year-by-Year Harvest Summary</h2>
+        <p>Continuous maturity and cash-harvest view with family ages for every calendar year.</p>
+        <div id="reportScopeLabel" class="reportScope">Overall</div>
+      </div>
+      <div class="reportActions">
+        <button class="pdfBtn" onclick="saveYearlyReportPDF()">⬇ Save as PDF</button>
+        <button class="closeBtn" onclick="closeYearlyReport()">✕ Close</button>
+      </div>
+    </div>
+    <div class="reportBody">
+      <div id="reportHero" class="reportHero"></div>
+      <div class="reportTableWrap">
+        <table class="reportTable">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Adult 1 Age</th>
+              <th>Adult 2 Age</th>
+              <th>Child Age / Stage</th>
+              <th>Maturity Events</th>
+              <th>Gross Matured</th>
+              <th>Reinvested</th>
+              <th>Cash Harvest</th>
+              <th>Cumulative Harvest</th>
+            </tr>
+          </thead>
+          <tbody id="reportRows"></tbody>
+        </table>
+      </div>
+      <div class="reportFoot">
+        <b>How to read this report:</b> Gross Matured is the amount reaching maturity in that year. Reinvested is the amount that continues into another MP2 cycle. Cash Harvest is only the amount from segments currently set to Harvest. Years with no maturity are intentionally shown as ₱0 so you can see whether your future maturity stream is truly continuous.
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
