@@ -306,6 +306,38 @@ button,input,select{font:inherit}
 .reportTable .cash{color:#2f6b4f;font-weight:900}
 .reportTable .reinvest{color:#45627c;font-weight:800}
 .reportEvents{font-size:11px;color:#66756d;max-width:280px;white-space:normal!important;line-height:1.4}
+
+.reportEvents{max-width:420px}
+.eventList{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.eventChip{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:6px 10px;border-radius:999px;border:1px solid var(--chip-border,#d7e2db);
+  background:var(--chip-bg,#f4f8f6);color:var(--chip-text,#254838);
+  font-size:11px;font-weight:800;line-height:1.2
+}
+.eventChip .dot{
+  width:10px;height:10px;border-radius:999px;background:var(--chip-accent,#2f6b4f);flex:0 0 auto
+}
+.eventChip .seg{font-weight:700;opacity:.92}
+.eventChip .act{
+  font-size:10px;font-weight:900;letter-spacing:.03em;
+  padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.58)
+}
+.eventChip .act.harvest{background:rgba(255,245,222,.95);color:#74541d}
+.eventChip .act.reinvest{background:rgba(234,242,251,.95);color:#365777}
+.reportLegend{
+  display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px 0
+}
+.legendChip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;
+  border:1px solid var(--chip-border,#d7e2db);
+  background:var(--chip-bg,#f4f8f6);color:var(--chip-text,#254838)
+}
+.legendChip .dot{
+  width:10px;height:10px;border-radius:999px;background:var(--chip-accent,#2f6b4f)
+}
+
 .reportFoot{
   margin-top:14px;padding:12px 14px;border-radius:13px;background:#fff6df;
   border:1px solid #f0e0b8;font-size:11px;color:#5e4b21;line-height:1.5
@@ -983,9 +1015,25 @@ function getReportScopeJourneys(){
   }
   return journeys;
 }
+
+function escapeHtml(str){
+  return String(str??"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function getRootColor(index){
+  const palette=[
+    {bg:"#e8f3ec",text:"#214e3a",border:"#bfd7c9",accent:"#2f6b4f"},
+    {bg:"#eef4fb",text:"#2e4e73",border:"#cad8ec",accent:"#5b84c4"},
+    {bg:"#f9efe7",text:"#7a4c1f",border:"#ead2bd",accent:"#d58b4b"},
+    {bg:"#f3edf9",text:"#5b3f78",border:"#d8caea",accent:"#9469c9"},
+    {bg:"#fff3dc",text:"#72581c",border:"#ead9a7",accent:"#d9a93e"},
+    {bg:"#fcecef",text:"#7a3b4b",border:"#efcdd6",accent:"#d46a87"},
+  ];
+  return palette[index % palette.length];
+}
+
 function buildYearlyHarvestRows(){
   const journeys=getReportScopeJourneys();
-  const segments=journeys.flatMap(j=>j.segs.map(seg=>({root:j.root,seg})));
+  const segments=journeys.flatMap((j,rootIndex)=>j.segs.map(seg=>({root:j.root,seg,rootIndex})));
   if(!segments.length) return {rows:[],journeys,segments};
 
   const minStart=Math.min(currentYear,...segments.map(x=>x.seg.startYear));
@@ -1055,9 +1103,28 @@ function renderYearlyReport(){
     </div>
   `;
 
+  const legendRoots = journeys.map((j,i)=>{
+    const c=getRootColor(i);
+    return `<span class="legendChip" style="--chip-bg:${c.bg};--chip-text:${c.text};--chip-border:${c.border};--chip-accent:${c.accent}">
+      <span class="dot"></span>${escapeHtml(j.root.name)}
+    </span>`;
+  }).join("");
+  document.getElementById("reportLegend").innerHTML = legendRoots
+    ? legendRoots
+    : "";
+
   document.getElementById("reportRows").innerHTML=rows.map(r=>{
     const eventText=r.events.length
-      ? r.events.map(e=>`${e.root.name}: ${e.seg.title.replace(e.root.name+" → ","")} (${e.seg.action==="reinvest"?"Reinvest":"Harvest"})`).join("<br>")
+      ? `<div class="eventList">` + r.events.map(e=>{
+          const c=getRootColor(e.rootIndex||0);
+          const segName = e.seg.title.replace(e.root.name+" → ","");
+          return `<span class="eventChip" style="--chip-bg:${c.bg};--chip-text:${c.text};--chip-border:${c.border};--chip-accent:${c.accent}">
+            <span class="dot"></span>
+            <span>${escapeHtml(e.root.name)}</span>
+            <span class="seg">• ${escapeHtml(segName)}</span>
+            <span class="act ${e.seg.action==='reinvest'?'reinvest':'harvest'}">${e.seg.action==='reinvest'?'REINVEST':'HARVEST'}</span>
+          </span>`;
+        }).join("") + `</div>`
       : "—";
     const childText=r.child!=null?`${r.child} • ${r.childStage}`:"—";
     return `<tr>
@@ -1211,6 +1278,7 @@ if(!loadData(false)){
     </div>
     <div class="reportBody">
       <div id="reportHero" class="reportHero"></div>
+      <div id="reportLegend" class="reportLegend"></div>
       <div class="reportTableWrap">
         <table class="reportTable">
           <thead>
