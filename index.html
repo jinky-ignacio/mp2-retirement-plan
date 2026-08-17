@@ -366,6 +366,11 @@ button,input,select{font:inherit}
   @page{size:A4 landscape;margin:10mm}
 }
 
+
+.liveLinkBadge{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;
+  background:#eaf4ff;color:#365d82;border:1px solid #cfe0f1;font-size:10px;font-weight:900
+}
 </style>
 </head>
 <body>
@@ -634,21 +639,41 @@ function calcSegment(years){
 }
 function ensureBranchRecord(root, idx, startYear, seed){
   root._branches = root._branches || {};
+  const seedMonth=Math.max(0,Math.min(11,(Number(root.maturityMonth||5)-1)));
+  const newSeed=Number(seed||0);
+
   if(!root._branches[idx]){
-    const years = normalizeYearArray(Array.from({length:5},(_,i)=>makeYear(startYear+i,[])), startYear);
-    const seedMonth=Math.max(0,Math.min(11,(Number(root.maturityMonth||5)-1)));
-    years[0].m[seedMonth]=Math.round(seed);
+    const years = normalizeYearArray(
+      Array.from({length:5},(_,i)=>makeYear(startYear+i,[])),
+      startYear
+    );
+    years[0].m[seedMonth]=newSeed;
     root._branches[idx]={
       action:"harvest",
       startYear,
-      seedBase:Math.round(seed),
+      seedBase:newSeed,
+      seedMonth,
       years
     };
   } else {
-    root._branches[idx].startYear=startYear;
-    root._branches[idx].years=normalizeYearArray(root._branches[idx].years||[], startYear);
-    if(root._branches[idx].seedBase==null) root._branches[idx].seedBase=Math.round(seed);
+    const branch=root._branches[idx];
+    branch.startYear=startYear;
+    branch.years=normalizeYearArray(branch.years||[], startYear);
+
+    const oldSeed=Number(branch.seedBase||0);
+    const oldSeedMonth=(branch.seedMonth!=null) ? Number(branch.seedMonth) : seedMonth;
+    const oldCellValue=Number(branch.years[0].m[oldSeedMonth]||0);
+    const manualAdjustment=oldCellValue-oldSeed;
+
+    if(oldSeedMonth!==seedMonth){
+      branch.years[0].m[oldSeedMonth]=0;
+    }
+
+    branch.years[0].m[seedMonth]=newSeed+manualAdjustment;
+    branch.seedBase=newSeed;
+    branch.seedMonth=seedMonth;
   }
+
   return root._branches[idx];
 }
 function buildJourney(root){
@@ -910,7 +935,7 @@ function renderAccounts(){
       const summaryLine = `
         <div class="summaryLine">
           <span>Contributions: <b>${P(seg.calc.totalContrib)}</b></span>
-          ${idx>0?`<span>Default rollover when created: <b>${P(branchMeta?.seedBase||0)}</b></span>`:''}
+          ${idx>0?`<span>Live linked rollover: <b>${P(branchMeta?.seedBase||0)}</b></span>`:''}
           <span>Estimated dividends: <b>${P(seg.calc.totalDiv)}</b></span>
           <span>Maturity value: <b>${P(seg.calc.maturity)}</b></span>
         </div>
@@ -921,7 +946,7 @@ function renderAccounts(){
           <button class="branchToggle" onclick="toggleSegment('${root.id}',${idx})">${isOpen?'▾':'▸'}</button>
           <div>
             <div class="branchTitle">${seg.title}</div>
-            <div class="branchSub">${seg.isRoot?'<span class="chip">Main Breakdown</span> Main account':'<span class="chip" style="background:linear-gradient(180deg,#f2f5fb,#eaeff9);color:#35537a;border-color:#dbe3f3">Linked Rollover</span> Branched from previous rollover'} • ${seg.startYear}–${seg.startYear+4} contributions</div>
+            <div class="branchSub">${seg.isRoot?'<span class="chip">Main Breakdown</span> Main account':'<span class="chip" style="background:linear-gradient(180deg,#f2f5fb,#eaeff9);color:#35537a;border-color:#dbe3f3">Linked Rollover</span> <span class="liveLinkBadge">🔗 LIVE LINK</span> Branched from previous rollover'} • ${seg.startYear}–${seg.startYear+4} contributions</div>
           </div>
           <div class="branchMetrics">
             ${metricCard("Contributions", P(seg.calc.totalContrib))}
@@ -958,7 +983,7 @@ function renderAccounts(){
         </div>
         <div class="branchBody">
           ${summaryLine}
-          ${idx>0?`<div class="helper" style="margin:0 0 10px 0">This linked rollover branch is now <b>editable</b>. The maturity amount from the previous branch was used only as the <b>default starting deposit</b> when this branch was created. You may edit that amount and even add more contributions if you want to top it up.</div>`:''}
+          ${idx>0?`<div class="helper" style="margin:0 0 10px 0">This rollover is <b>live-linked</b> to the previous account's maturity. If you change earlier monthly contributions or dividend rates, the linked maturity portion updates automatically. Any manual top-up or adjustment you add here is preserved on top of the refreshed rollover amount.</div>`:''}
           <div class="monthGrid">
             <table>
               <thead><tr><th>Year</th>${months.map(m=>`<th>${m}</th>`).join("")}<th>Total</th><th>Dividend %</th><th>Est. Dividend</th><th>Year-end Value</th></tr></thead>
